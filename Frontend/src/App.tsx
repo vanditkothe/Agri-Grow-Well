@@ -12,7 +12,7 @@ import HealthCheck from "./pages/HealthCheck";
 import DietPlan from "./pages/DietPlan";
 import CropDetection from "./pages/CropDetection";
 import SoilReport from "./pages/SoilReport";
-import NotFound from "./pages/NotFound";
+import NotFound from "./pages/Contact";
 
 const queryClient = new QueryClient();
 

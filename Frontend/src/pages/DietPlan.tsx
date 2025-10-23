@@ -8,18 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Utensils, Leaf, Apple } from "lucide-react";
+import { ArrowLeft, Utensils, Leaf, Apple, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const DietPlan = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [condition, setCondition] = useState("");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dietPlan, setDietPlan] = useState<string | null>(null); // ✅ AI diet plan output
 
   const conditions = [
     "Diabetes",
@@ -28,18 +30,16 @@ const DietPlan = () => {
     "Malnutrition",
     "Obesity",
     "Digestive Issues",
-    "General Health"
+    "General Health",
   ];
 
-  const commonAllergies = [
-    "Nuts", "Dairy", "Gluten", "Eggs", "Seafood", "Soy"
-  ];
+  const commonAllergies = ["Nuts", "Dairy", "Gluten", "Eggs", "Seafood", "Soy"];
 
   const handleAllergyChange = (allergy: string, checked: boolean) => {
     if (checked) {
       setAllergies([...allergies, allergy]);
     } else {
-      setAllergies(allergies.filter(a => a !== allergy));
+      setAllergies(allergies.filter((a) => a !== allergy));
     }
   };
 
@@ -54,15 +54,42 @@ const DietPlan = () => {
     }
 
     setIsGenerating(true);
-    
-    // Simulate AI plan generation - would require Supabase backend
-    setTimeout(() => {
-      setIsGenerating(false);
+    setDietPlan(null);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+      const response = await fetch(`${API_URL}/api/diet/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          age,
+          weight,
+          height,
+          condition,
+          allergies,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to generate diet plan");
+
+      const data = await response.json();
+      setDietPlan(data.plan); // ✅ Set AI response
+
       toast({
         title: "Diet Plan Ready!",
-        description: "Connect to Supabase to enable full AI diet plan generation",
+        description: "Check your personalized diet plan below 🍎",
       });
-    }, 3000);
+    } catch (err) {
+      toast({
+        title: "Failed to generate diet plan",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -72,9 +99,9 @@ const DietPlan = () => {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => navigate("/")}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -87,9 +114,7 @@ const DietPlan = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-primary-glow rounded-full mb-6">
               <Utensils className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Personalized Diet Plan
-            </h1>
+            <h1 className="text-4xl font-bold text-foreground mb-4">Personalized Diet Plan</h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Get AI-powered nutrition plans using locally available, affordable foods
             </p>
@@ -112,33 +137,18 @@ const DietPlan = () => {
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="age">Age *</Label>
-                      <Input
-                        id="age"
-                        placeholder="30"
-                        value={age}
-                        onChange={(e) => setAge(e.target.value)}
-                      />
+                      <Input id="age" placeholder="30" value={age} onChange={(e) => setAge(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="weight">Weight (kg) *</Label>
-                      <Input
-                        id="weight"
-                        placeholder="70"
-                        value={weight}
-                        onChange={(e) => setWeight(e.target.value)}
-                      />
+                      <Input id="weight" placeholder="70" value={weight} onChange={(e) => setWeight(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="height">Height (cm) *</Label>
-                      <Input
-                        id="height"
-                        placeholder="170"
-                        value={height}
-                        onChange={(e) => setHeight(e.target.value)}
-                      />
+                      <Input id="height" placeholder="170" value={height} onChange={(e) => setHeight(e.target.value)} />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="condition">Health Condition *</Label>
                     <Select value={condition} onValueChange={setCondition}>
@@ -163,9 +173,7 @@ const DietPlan = () => {
                           <Checkbox
                             id={allergy}
                             checked={allergies.includes(allergy)}
-                            onCheckedChange={(checked) => 
-                              handleAllergyChange(allergy, checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleAllergyChange(allergy, checked as boolean)}
                           />
                           <Label htmlFor={allergy} className="text-sm">
                             {allergy}
@@ -175,86 +183,36 @@ const DietPlan = () => {
                     </div>
                   </div>
 
-                  <Button 
+                  <Button
                     onClick={handleGeneratePlan}
                     disabled={isGenerating}
                     className="w-full bg-gradient-primary hover:opacity-90 text-white shadow-glow"
                     size="lg"
                   >
-                    {isGenerating ? "Creating your diet plan..." : "Generate My Diet Plan"}
+                    {isGenerating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating your diet plan...
+                      </>
+                    ) : (
+                      "Generate My Diet Plan"
+                    )}
                   </Button>
+
+                  {/* ✅ Display AI Diet Plan */}
+                  {dietPlan && (
+                    <Card className="mt-6 p-4 shadow-md rounded-2xl bg-white">
+                      <h2 className="text-xl font-semibold mb-3">🍽️ Your Personalized Diet Plan</h2>
+                      <div className="whitespace-pre-wrap leading-relaxed text-gray-800">{dietPlan}</div>
+                    </Card>
+                  )}
                 </CardContent>
               </Card>
             </div>
 
-            {/* Sidebar */}
+            {/* Sidebar (optional tips, local foods) */}
             <div className="space-y-6">
-              {/* Local Foods */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Leaf className="h-5 w-5 text-green-500" />
-                    Local Superfoods
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">Millets</Badge>
-                    <Badge variant="secondary">Lentils</Badge>
-                    <Badge variant="secondary">Leafy Greens</Badge>
-                    <Badge variant="secondary">Seasonal Fruits</Badge>
-                    <Badge variant="secondary">Yogurt</Badge>
-                    <Badge variant="secondary">Nuts & Seeds</Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Nutrition Tips */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Apple className="h-5 w-5 text-red-500" />
-                    Farmer Nutrition Tips
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    • Eat protein-rich foods for muscle recovery after farm work
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Include complex carbs for sustained energy throughout the day
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Stay hydrated with water, buttermilk, or coconut water
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Eat seasonal produce for maximum nutrition and affordability
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Sample Meal */}
-              <Card className="bg-gradient-subtle">
-                <CardHeader>
-                  <CardTitle className="text-lg">Sample Farmer's Meal</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="font-medium text-sm">Breakfast</p>
-                    <p className="text-sm text-muted-foreground">
-                      Millet porridge with jaggery, banana, and nuts
-                    </p>
-                    <p className="font-medium text-sm mt-3">Lunch</p>
-                    <p className="text-sm text-muted-foreground">
-                      Rice, dal, vegetables, and buttermilk
-                    </p>
-                    <p className="font-medium text-sm mt-3">Dinner</p>
-                    <p className="text-sm text-muted-foreground">
-                      Roti, seasonal vegetables, and yogurt
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* ...keep your sidebar content as is... */}
             </div>
           </div>
         </div>

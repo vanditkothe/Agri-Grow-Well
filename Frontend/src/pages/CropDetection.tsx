@@ -18,6 +18,7 @@ const CropDetection = () => {
   const [cropType, setCropType] = useState("");
   const [location, setLocation] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
 
   const cropTypes = [
     "Rice", "Wheat", "Corn", "Tomato", "Potato", "Cotton", 
@@ -35,38 +36,67 @@ const CropDetection = () => {
     }
   };
 
-  const handleAnalyze = async () => {
-    if (!selectedImage) {
-      toast({
-        title: "Please upload an image",
-        description: "Upload a photo of your crop to get AI analysis",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsAnalyzing(true);
-    
-    // Simulate AI analysis - would require Supabase backend
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      toast({
-        title: "Analysis Complete",
-        description: "Connect to Supabase to enable full AI crop disease detection",
-      });
-    }, 3000);
-  };
-
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
+
+ const handleAnalyze = async () => {
+  if (!selectedImage) {
+    toast({
+      title: "Please upload an image",
+      description: "Upload a photo of your crop to get AI analysis",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsAnalyzing(true);
+  setAiResult(null);
+
+  try {
+    const response = await fetch("http://localhost:8000/api/crop/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: selectedImage, cropType, location }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      toast({
+        title: "Analysis failed",
+        description: data.error || "Something went wrong",
+        variant: "destructive",
+      });
+    } else {
+      // Format AI response
+      const formatted = data.analysis
+        .replace(/\*/g, "")
+        .replace(/\\n/g, "\n");
+
+      setAiResult(formatted);
+      toast({
+        title: "Analysis Complete",
+        description: "AI crop disease detection finished",
+      });
+    }
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description: error.message || "Something went wrong",
+      variant: "destructive",
+    });
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <Header />
       <main className="container mx-auto px-4 pt-8 pb-12">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="flex items-center gap-4 mb-8">
             <Button 
               variant="ghost" 
@@ -92,7 +122,6 @@ const CropDetection = () => {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Form */}
             <div className="lg:col-span-2 space-y-6">
               {/* Image Upload */}
               <Card className="shadow-elegant">
@@ -193,11 +222,22 @@ const CropDetection = () => {
                   </Button>
                 </CardContent>
               </Card>
+
+              {/* AI Result */}
+              {aiResult && (
+                <Card className="shadow-elegant bg-green-50">
+                  <CardHeader>
+                    <CardTitle>AI Crop Health Analysis</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="whitespace-pre-line">{aiResult}</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* Detection Types */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">What We Detect</CardTitle>
@@ -227,28 +267,18 @@ const CropDetection = () => {
                 </CardContent>
               </Card>
 
-              {/* Photo Tips */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Photo Tips</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    • Take photos in good natural light
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Focus on affected plant parts
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Include close-up and wider shots
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    • Avoid blurry or dark images
-                  </p>
+                  <p className="text-sm text-muted-foreground">• Take photos in good natural light</p>
+                  <p className="text-sm text-muted-foreground">• Focus on affected plant parts</p>
+                  <p className="text-sm text-muted-foreground">• Include close-up and wider shots</p>
+                  <p className="text-sm text-muted-foreground">• Avoid blurry or dark images</p>
                 </CardContent>
               </Card>
 
-              {/* Common Issues */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Common Crop Issues</CardTitle>
