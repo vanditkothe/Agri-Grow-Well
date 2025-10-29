@@ -1,9 +1,12 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heart, Stethoscope, Sprout, MessageCircle, Shield, Users } from "lucide-react";
 
 const Features = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     document.title = "Features - Agri-Health AI Assistant";
     
@@ -25,7 +28,8 @@ const Features = () => {
         "Emergency alerts for critical symptoms", 
         "Home remedy suggestions",
         "Doctor consultation recommendations"
-      ]
+      ],
+      link: "/health-check"
     },
     {
       icon: Heart,
@@ -36,7 +40,8 @@ const Features = () => {
         "Hypertension-friendly meals",
         "Culturally appropriate recipes",
         "Affordable, local ingredients"
-      ]
+      ],
+      link: "/diet-plan"
     },
     {
       icon: Sprout,
@@ -47,7 +52,8 @@ const Features = () => {
         "Treatment and fertilizer guidance",
         "Preventive farming tips",
         "Seasonal crop rotation advice"
-      ]
+      ],
+      link: "/crop-detection"
     },
     {
       icon: MessageCircle,
@@ -58,7 +64,8 @@ const Features = () => {
         "Voice input for easy interaction",
         "Multi-language support",
         "Visual aids and explanations"
-      ]
+      ],
+      link: "/ai-assistant"
     },
     {
       icon: Shield,
@@ -69,7 +76,8 @@ const Features = () => {
         "HIPAA-compliant storage",
         "No data sharing with third parties",
         "Offline mode available"
-      ]
+      ],
+      link: null
     },
     {
       icon: Users,
@@ -80,7 +88,8 @@ const Features = () => {
         "Expert farming tips",
         "Peer-to-peer support",
         "Local farming networks"
-      ]
+      ],
+      link: null
     }
   ];
 
@@ -106,7 +115,11 @@ const Features = () => {
           <div className="container mx-auto px-4">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {features.map((feature, index) => (
-                <Card key={index} className="group hover:shadow-elegant transition-all duration-300">
+                <Card 
+                  key={index} 
+                  className={`group hover:shadow-elegant transition-all duration-300 ${feature.link ? 'cursor-pointer' : ''}`}
+                  onClick={() => feature.link && navigate(feature.link)}
+                >
                   <CardHeader>
                     <div className="p-3 bg-gradient-primary rounded-lg w-fit mb-4 group-hover:scale-110 transition-transform duration-300">
                       <feature.icon className="h-8 w-8 text-primary-foreground" />

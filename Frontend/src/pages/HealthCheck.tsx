@@ -8,8 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Heart, AlertTriangle, CheckCircle, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Heart, AlertTriangle, CheckCircle, Loader2, AlertCircle, Upload, X, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface AnalysisResult {
   analysis: string;
@@ -24,9 +26,56 @@ const HealthCheck = () => {
   const [symptoms, setSymptoms] = useState("");
   const [age, setAge] = useState("");
   const [gender, setGender] = useState("");
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const [reportText, setReportText] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a JPG, PNG, or PDF file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setReportFile(file);
+    
+    // Convert to base64 for sending to backend
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setReportText(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    toast({
+      title: "Report uploaded",
+      description: `${file.name} uploaded successfully`,
+    });
+  };
+
+  const removeReport = () => {
+    setReportFile(null);
+    setReportText("");
+  };
 
   const handleAnalyze = async () => {
     // Validation
@@ -53,7 +102,6 @@ const HealthCheck = () => {
     setAnalysisResult(null);
     
     try {
-      // Updated to match your backend URL pattern
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       
       const response = await fetch(`${API_URL}/api/health/analyze`, {
@@ -66,6 +114,8 @@ const HealthCheck = () => {
           symptoms,
           age,
           gender,
+          reportImage: reportText || null,
+          hasReport: !!reportFile,
         }),
       });
 
@@ -183,6 +233,61 @@ const HealthCheck = () => {
                     />
                   </div>
 
+                  {/* Medical Report Upload */}
+                  <div className="space-y-2">
+                    <Label htmlFor="report">Medical Test Report (Optional)</Label>
+                    <div className="text-xs text-muted-foreground mb-2">
+                      Upload blood test, X-ray, or other medical reports for more accurate analysis
+                    </div>
+                    
+                    {!reportFile ? (
+                      <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 hover:border-primary/50 transition-colors">
+                        <input
+                          id="report"
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={handleFileUpload}
+                          disabled={isAnalyzing}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="report"
+                          className="flex flex-col items-center justify-center cursor-pointer"
+                        >
+                          <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                          <p className="text-sm font-medium text-foreground">
+                            Click to upload report
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JPG, PNG, or PDF (Max 5MB)
+                          </p>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="border border-muted rounded-lg p-4 flex items-center justify-between bg-muted/20">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-8 w-8 text-primary" />
+                          <div>
+                            <p className="text-sm font-medium text-foreground">
+                              {reportFile.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {(reportFile.size / 1024).toFixed(1)} KB
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={removeReport}
+                          disabled={isAnalyzing}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <Button 
                     onClick={handleAnalyze}
                     disabled={isAnalyzing}
@@ -225,9 +330,13 @@ const HealthCheck = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="prose prose-sm max-w-none">
-                      <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                        {analysisResult.analysis}
-                      </div>
+                      <div
+  className="prose prose-sm sm:prose-base max-w-none leading-relaxed text-foreground"
+>
+  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+    {analysisResult.analysis.replace(/\n(?!\n)/g, '\n\n')}
+  </ReactMarkdown>
+</div>
                     </div>
                     
                     <Alert>
@@ -245,6 +354,8 @@ const HealthCheck = () => {
                         setSymptoms("");
                         setAge("");
                         setGender("");
+                        setReportFile(null);
+                        setReportText("");
                       }}
                     >
                       New Analysis

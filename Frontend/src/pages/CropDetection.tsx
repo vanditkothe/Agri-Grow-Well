@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Camera, Upload, Leaf, Bug, Droplets } from "lucide-react";
+import { ArrowLeft, Camera, Upload, Leaf, Bug, Droplets, AlertTriangle, CheckCircle2, Sprout } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const CropDetection = () => {
@@ -16,14 +16,22 @@ const CropDetection = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [cropType, setCropType] = useState("");
-  const [location, setLocation] = useState("");
+  const [customCropType, setCustomCropType] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<any>(null);
 
   const cropTypes = [
     "Rice", "Wheat", "Corn", "Tomato", "Potato", "Cotton", 
     "Sugarcane", "Soybean", "Onion", "Chili", "Other"
   ];
+
+  // Get the actual crop type to send to API
+  const getActualCropType = () => {
+    if (cropType === "Other" && customCropType.trim()) {
+      return customCropType.trim();
+    }
+    return cropType;
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -40,63 +48,67 @@ const CropDetection = () => {
     fileInputRef.current?.click();
   };
 
- const handleAnalyze = async () => {
-  if (!selectedImage) {
-    toast({
-      title: "Please upload an image",
-      description: "Upload a photo of your crop to get AI analysis",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsAnalyzing(true);
-  setAiResult(null);
-
-  try {
-    const response = await fetch("http://localhost:8000/api/crop/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: selectedImage, cropType, location }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
+  const handleAnalyze = async () => {
+    if (!selectedImage) {
       toast({
-        title: "Analysis failed",
-        description: data.error || "Something went wrong",
+        title: "Please upload an image",
+        description: "Upload a photo of your crop to get AI analysis",
         variant: "destructive",
       });
-    } else {
-      // Format AI response
-      const formatted = data.analysis
-        .replace(/\*/g, "")
-        .replace(/\\n/g, "\n");
-
-      setAiResult(formatted);
-      toast({
-        title: "Analysis Complete",
-        description: "AI crop disease detection finished",
-      });
+      return;
     }
-  } catch (error: any) {
-    toast({
-      title: "Error",
-      description: error.message || "Something went wrong",
-      variant: "destructive",
-    });
-  } finally {
-    setIsAnalyzing(false);
-  }
-};
 
+    if (cropType === "Other" && !customCropType.trim()) {
+      toast({
+        title: "Please specify crop type",
+        description: "Enter the name of your crop in the text field",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAiResult(null);
+
+    try {
+      const actualCropType = getActualCropType();
+      const response = await fetch("http://localhost:8000/api/crop/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: selectedImage, cropType: actualCropType }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "Analysis failed",
+          description: data.error || "Something went wrong",
+          variant: "destructive",
+        });
+      } else {
+        setAiResult(data.analysis);
+        toast({
+          title: "Analysis Complete",
+          description: "AI crop disease detection finished",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <Header />
       <main className="container mx-auto px-4 pt-8 pb-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-4 mb-8">
             <Button 
               variant="ghost" 
@@ -181,36 +193,47 @@ const CropDetection = () => {
                 <CardHeader>
                   <CardTitle>Crop Information</CardTitle>
                   <CardDescription>
-                    Help us provide more accurate analysis by sharing details about your crop.
+                    Select your crop type for more accurate analysis.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="crop-type">Crop Type</Label>
-                      <Select value={cropType} onValueChange={setCropType}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select crop type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {cropTypes.map((crop) => (
-                            <SelectItem key={crop} value={crop}>
-                              {crop}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Your Location</Label>
-                      <Input
-                        id="location"
-                        placeholder="City, State"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="crop-type">Crop Type</Label>
+                    <Select value={cropType} onValueChange={(value) => {
+                      setCropType(value);
+                      if (value !== "Other") {
+                        setCustomCropType("");
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select crop type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cropTypes.map((crop) => (
+                          <SelectItem key={crop} value={crop}>
+                            {crop}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {/* Custom crop type input - shows when "Other" is selected */}
+                  {cropType === "Other" && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label htmlFor="custom-crop">Enter Crop Name</Label>
+                      <Input
+                        id="custom-crop"
+                        placeholder="e.g., Banana, Mango, Grapes..."
+                        value={customCropType}
+                        onChange={(e) => setCustomCropType(e.target.value)}
+                        className="border-primary/50 focus:border-primary"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Please specify the name of your crop for accurate analysis
+                      </p>
+                    </div>
+                  )}
 
                   <Button 
                     onClick={handleAnalyze}
@@ -225,14 +248,169 @@ const CropDetection = () => {
 
               {/* AI Result */}
               {aiResult && (
-                <Card className="shadow-elegant bg-green-50">
-                  <CardHeader>
-                    <CardTitle>AI Crop Health Analysis</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="whitespace-pre-line">{aiResult}</p>
-                  </CardContent>
-                </Card>
+                <div className="space-y-6">
+                  {/* Overall Health Status */}
+                  {aiResult.healthStatus && (
+                    <Card className={`shadow-elegant ${
+                      aiResult.healthStatus.status === 'Healthy' ? 'bg-green-50' :
+                      aiResult.healthStatus.status === 'Diseased' ? 'bg-red-50' :
+                      'bg-yellow-50'
+                    }`}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          {aiResult.healthStatus.status === 'Healthy' ? (
+                            <CheckCircle2 className="h-6 w-6 text-green-600" />
+                          ) : (
+                            <AlertTriangle className="h-6 w-6 text-red-600" />
+                          )}
+                          Overall Health Status: {aiResult.healthStatus.status}
+                        </CardTitle>
+                        <CardDescription className="text-base">
+                          Confidence: {aiResult.healthStatus.confidence}
+                        </CardDescription>
+                      </CardHeader>
+                      {aiResult.healthStatus.summary && (
+                        <CardContent>
+                          <p className="text-sm">{aiResult.healthStatus.summary}</p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Identified Issues */}
+                  {aiResult.identifiedIssues && aiResult.identifiedIssues.length > 0 && (
+                    <Card className="shadow-elegant">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Bug className="h-5 w-5 text-red-500" />
+                          Identified Issues
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {aiResult.identifiedIssues.map((issue: any, index: number) => (
+                          <div key={index} className="border-l-4 border-red-400 pl-4 py-2">
+                            <h4 className="font-semibold text-lg mb-1">{issue.name}</h4>
+                            <Badge variant="destructive" className="mb-2">
+                              {issue.type} - Severity: {issue.severity}
+                            </Badge>
+                            <p className="text-sm text-muted-foreground mb-2">{issue.description}</p>
+                            {issue.symptoms && issue.symptoms.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-sm font-medium">Symptoms:</p>
+                                <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                  {issue.symptoms.map((symptom: string, i: number) => (
+                                    <li key={i}>{symptom}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Treatment Recommendations */}
+                  {aiResult.treatmentRecommendations && (
+                    <Card className="shadow-elegant bg-blue-50">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Sprout className="h-5 w-5 text-blue-600" />
+                          Treatment Recommendations
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {aiResult.treatmentRecommendations.immediate && (
+                          <div>
+                            <h4 className="font-semibold text-red-700 mb-2">🚨 Immediate Actions:</h4>
+                            <ul className="space-y-2">
+                              {aiResult.treatmentRecommendations.immediate.map((action: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-red-600 mt-1">•</span>
+                                  <span className="text-sm">{action}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {aiResult.treatmentRecommendations.organic && (
+                          <div>
+                            <h4 className="font-semibold text-green-700 mb-2">🌿 Organic Solutions:</h4>
+                            <ul className="space-y-2">
+                              {aiResult.treatmentRecommendations.organic.map((solution: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-green-600 mt-1">•</span>
+                                  <span className="text-sm">{solution}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {aiResult.treatmentRecommendations.chemical && (
+                          <div>
+                            <h4 className="font-semibold text-blue-700 mb-2">⚗️ Chemical Treatments:</h4>
+                            <ul className="space-y-2">
+                              {aiResult.treatmentRecommendations.chemical.map((treatment: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-blue-600 mt-1">•</span>
+                                  <span className="text-sm">{treatment}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {aiResult.treatmentRecommendations.preventive && (
+                          <div>
+                            <h4 className="font-semibold text-purple-700 mb-2">🛡️ Preventive Measures:</h4>
+                            <ul className="space-y-2">
+                              {aiResult.treatmentRecommendations.preventive.map((measure: string, i: number) => (
+                                <li key={i} className="flex items-start gap-2">
+                                  <span className="text-purple-600 mt-1">•</span>
+                                  <span className="text-sm">{measure}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Additional Care Tips */}
+                  {aiResult.additionalTips && aiResult.additionalTips.length > 0 && (
+                    <Card className="shadow-elegant">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Droplets className="h-5 w-5 text-blue-500" />
+                          Additional Care Tips
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {aiResult.additionalTips.map((tip: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-blue-500 mt-1">💡</span>
+                              <span className="text-sm">{tip}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Disclaimer */}
+                  <Card className="shadow-elegant border-yellow-400">
+                    <CardContent className="pt-6">
+                      <p className="text-xs text-muted-foreground">
+                        ⚠️ <strong>Disclaimer:</strong> This AI analysis is for informational purposes only. 
+                        For severe infestations or diseases, please consult with a local agricultural expert or extension officer.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
             </div>
 

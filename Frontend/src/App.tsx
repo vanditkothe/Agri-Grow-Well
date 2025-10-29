@@ -13,6 +13,7 @@ import DietPlan from "./pages/DietPlan";
 import CropDetection from "./pages/CropDetection";
 import SoilReport from "./pages/SoilReport";
 import NotFound from "./pages/Contact";
+import AiAssistant from "./pages/AiAssistant";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/diet-plan" element={<DietPlan />} />
           <Route path="/crop-detection" element={<CropDetection />} />
           <Route path="/soil-report" element={<SoilReport />} />
+          <Route path="/ai-assistant" element={<AiAssistant />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
