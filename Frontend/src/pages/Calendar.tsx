@@ -13,7 +13,7 @@ import { CalendarDays, Sprout, Heart, Plus, Trash2, Loader2, AlertCircle } from 
 import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Event {
   _id: string;

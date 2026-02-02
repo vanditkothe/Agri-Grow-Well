@@ -87,7 +87,7 @@ const DietPlan = () => {
     setShowHindi(false);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const API_URL = import.meta.env.VITE_API_URL ;
 
       const response = await fetch(`${API_URL}/api/diet/plan`, {
         method: "POST",
@@ -129,7 +129,7 @@ const DietPlan = () => {
     setIsTranslating(true);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const API_URL = import.meta.env.VITE_API_URL ;
 
       const response = await fetch(`${API_URL}/api/diet/translate`, {
         method: "POST",
