@@ -92,7 +92,7 @@ const DietPlan = () => {
       const response = await fetch(`${API_URL}/api/diet/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
+
         body: JSON.stringify({
           age,
           weight,
@@ -134,7 +134,7 @@ const DietPlan = () => {
       const response = await fetch(`${API_URL}/api/diet/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
+
         body: JSON.stringify({
           dietPlan,
         }),
