@@ -92,7 +92,7 @@ const DietPlan = () => {
       const response = await fetch(`${API_URL}/api/diet/plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-
+        
         body: JSON.stringify({
           age,
           weight,
@@ -134,7 +134,7 @@ const DietPlan = () => {
       const response = await fetch(`${API_URL}/api/diet/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-
+        
         body: JSON.stringify({
           dietPlan,
         }),
@@ -164,7 +164,10 @@ const DietPlan = () => {
   const bmi = calculateBMI();
   const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
 
-  const currentPlan = showHindi && translatedPlan ? translatedPlan : dietPlan;
+  const currentPlan = showHindi
+  ? translatedPlan ?? null
+  : dietPlan ?? null;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -362,8 +365,8 @@ const DietPlan = () => {
               </Card>
 
               {/* AI Diet Plan Display */}
-              {dietPlan && (
-                <Card className="shadow-elegant">
+              {currentPlan?.weeklyPlan && Array.isArray(currentPlan.weeklyPlan) && (
+  <Card className="shadow-elegant">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
@@ -398,36 +401,39 @@ const DietPlan = () => {
                   <CardContent>
                     <div className="space-y-4">
 
-  <p><strong>{showHindi ? "बीएमआई" : "BMI"}:</strong> {currentPlan.bmi}</p>
-  <p><strong>{showHindi ? "श्रेणी" : "Category"}:</strong> {currentPlan.bmiCategory}</p>
-  <p><strong>{showHindi ? "दैनिक कैलोरी" : "Daily Calories"}:</strong> {currentPlan.calorieTarget}</p>
+  <p><strong>{showHindi ? "बीएमआई" : "BMI"}:</strong> {currentPlan?.bmi}</p>
+  <p><strong>{showHindi ? "श्रेणी" : "Category"}:</strong> {currentPlan?.bmiCategory}</p>
+  <p><strong>{showHindi ? "दैनिक कैलोरी" : "Daily Calories"}:</strong> {currentPlan?.calorieTarget}</p>
 
   <div>
     <h3 className="font-semibold">{showHindi ? "पोषण लक्ष्य" : "Nutrition Goals"}</h3>
     <ul className="list-disc ml-6">
-      <li>{showHindi ? "प्रोटीन" : "Protein"}: {currentPlan.nutritionGoals.protein}</li>
-      <li>{showHindi ? "कार्बोहाइड्रेट" : "Carbs"}: {currentPlan.nutritionGoals.carbs}</li>
-      <li>{showHindi ? "वसा" : "Fats"}: {currentPlan.nutritionGoals.fats}</li>
-      <li>{showHindi ? "फाइबर" : "Fiber"}: {currentPlan.nutritionGoals.fiber}</li>
+      <li>{showHindi ? "प्रोटीन" : "Protein"}: {currentPlan?.nutritionGoals?.protein ?? "N/A"}</li>
+<li>{showHindi ? "कार्बोहाइड्रेट" : "Carbs"}: {currentPlan?.nutritionGoals?.carbs ?? "N/A"}</li>
+<li>{showHindi ? "वसा" : "Fats"}: {currentPlan?.nutritionGoals?.fats ?? "N/A"}</li>
+<li>{showHindi ? "फाइबर" : "Fiber"}: {currentPlan?.nutritionGoals?.fiber ?? "N/A"}</li>
+
     </ul>
   </div>
 
   <div>
     <h3 className="font-semibold">{showHindi ? "साप्ताहिक योजना" : "Weekly Plan"}</h3>
-    {currentPlan.weeklyPlan.map((day: any, index: number) => (
-      <div key={index} className="border rounded p-3 mt-2">
-        <p className="font-medium">{day.day}</p>
-        <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day.meals.breakfast.items.join(", ")}</p>
-        <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day.meals.lunch.items.join(", ")}</p>
-        <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day.meals.dinner.items.join(", ")}</p>
-      </div>
-    ))}
+
+{(currentPlan?.weeklyPlan || []).map((day: any, index: number) => (
+  <div key={index} className="border rounded p-3 mt-2">
+    <p className="font-medium">{day?.day}</p>
+    <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day?.meals?.breakfast?.items?.join(", ") || "N/A"}</p>
+    <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day?.meals?.lunch?.items?.join(", ") || "N/A"}</p>
+    <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day?.meals?.dinner?.items?.join(", ") || "N/A"}</p>
+  </div>
+))}
+
   </div>
 
   <div>
     <h3 className="font-semibold">{showHindi ? "स्वास्थ्य सुझाव" : "Health Tips"}</h3>
     <ul className="list-disc ml-6">
-      {currentPlan.healthTips.map((tip: string, i: number) => (
+      {(currentPlan?.tips || []).map((tip: string, i: number)=> (
         <li key={i}>{tip}</li>
       ))}
     </ul>
