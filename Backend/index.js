@@ -222,9 +222,8 @@ app.get("/api/health/status", (req, res) => {
   res.json({ 
     status: "ok", 
     message: "Health Analysis API is running",
-    model: "gemini-1.5-flash-latest",
-    queueSize: requestQueue.length,
-    isProcessing 
+    model: "gemini-2.5-flash",
+    timestamp: new Date().toISOString()
   });
 });
 
