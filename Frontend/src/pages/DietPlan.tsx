@@ -408,20 +408,26 @@ const DietPlan = () => {
   <div>
     <h3 className="font-semibold">{showHindi ? "पोषण लक्ष्य" : "Nutrition Goals"}</h3>
     <ul className="list-disc ml-6">
-      <li>{showHindi ? "प्रोटीन" : "Protein"}: {currentPlan.nutritionGoals.protein}</li>
-      <li>{showHindi ? "कार्बोहाइड्रेट" : "Carbs"}: {currentPlan.nutritionGoals.carbs}</li>
-      <li>{showHindi ? "वसा" : "Fats"}: {currentPlan.nutritionGoals.fats}</li>
-      <li>{showHindi ? "फाइबर" : "Fiber"}: {currentPlan.nutritionGoals.fiber}</li>
+      <li>{showHindi ? "प्रोटीन" : "Protein"}: {currentPlan?.nutritionGoals?.protein ?? "N/A"}</li>
+<li>{showHindi ? "कार्बोहाइड्रेट" : "Carbs"}: {currentPlan?.nutritionGoals?.carbs ?? "N/A"}</li>
+<li>{showHindi ? "वसा" : "Fats"}: {currentPlan?.nutritionGoals?.fats ?? "N/A"}</li>
+<li>{showHindi ? "फाइबर" : "Fiber"}: {currentPlan?.nutritionGoals?.fiber ?? "N/A"}</li>
+
     </ul>
   </div>
 
   <div>
     <h3 className="font-semibold">{showHindi ? "साप्ताहिक योजना" : "Weekly Plan"}</h3>
-    <ul className="list-disc ml-6">
-  {(currentPlan?.tips || []).map((tip: string, i: number) => (
-    <li key={i}>{tip}</li>
-  ))}
-</ul>
+
+{(currentPlan?.weeklyPlan || []).map((day: any, index: number) => (
+  <div key={index} className="border rounded p-3 mt-2">
+    <p className="font-medium">{day?.day}</p>
+    <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day?.meals?.breakfast?.items?.join(", ") || "N/A"}</p>
+    <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day?.meals?.lunch?.items?.join(", ") || "N/A"}</p>
+    <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day?.meals?.dinner?.items?.join(", ") || "N/A"}</p>
+  </div>
+))}
+
   </div>
 
   <div>
