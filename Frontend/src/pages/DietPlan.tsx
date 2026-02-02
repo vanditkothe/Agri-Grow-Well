@@ -164,7 +164,10 @@ const DietPlan = () => {
   const bmi = calculateBMI();
   const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
 
-  const currentPlan = showHindi && translatedPlan ? translatedPlan : dietPlan;
+  const currentPlan = showHindi
+  ? translatedPlan ?? null
+  : dietPlan ?? null;
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -362,8 +365,8 @@ const DietPlan = () => {
               </Card>
 
               {/* AI Diet Plan Display */}
-              {dietPlan && (
-                <Card className="shadow-elegant">
+              {currentPlan?.weeklyPlan && Array.isArray(currentPlan.weeklyPlan) && (
+  <Card className="shadow-elegant">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
@@ -414,14 +417,11 @@ const DietPlan = () => {
 
   <div>
     <h3 className="font-semibold">{showHindi ? "साप्ताहिक योजना" : "Weekly Plan"}</h3>
-    {(currentPlan?.weeklyPlan || []).map((day: any, index: number) => (
-      <div key={index} className="border rounded p-3 mt-2">
-        <p className="font-medium">{day.day}</p>
-        <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day.meals?.breakfast?.items?.join(", ")}</p>
-        <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day.meals?.lunch?.items?.join(", ")}</p>
-        <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day.meals?.dinner?.items?.join(", ")}</p>
-      </div>
-    ))}
+    <ul className="list-disc ml-6">
+  {(currentPlan?.tips || []).map((tip: string, i: number) => (
+    <li key={i}>{tip}</li>
+  ))}
+</ul>
   </div>
 
   <div>
