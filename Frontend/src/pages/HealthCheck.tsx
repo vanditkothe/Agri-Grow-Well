@@ -211,7 +211,7 @@ const HealthCheck = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        
         body: JSON.stringify({
           symptoms,
           age,
