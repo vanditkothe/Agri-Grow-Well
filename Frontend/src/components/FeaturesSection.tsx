@@ -161,7 +161,7 @@ const FeaturesSection = () => {
           <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
             Join thousands of farmers who are already using our AI platform to improve their health and crop yields.
           </p>
-          <Button 
+          {/* <Button 
             variant="hero" 
             size="lg" 
             className="text-lg px-8 py-6"
@@ -169,7 +169,7 @@ const FeaturesSection = () => {
           >
             Get Started Today
             <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+          </Button> */}
         </div>
       </div>
     </section>

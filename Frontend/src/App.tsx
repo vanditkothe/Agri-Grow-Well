@@ -6,8 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Features from "./pages/Features";
 import Calendar from "./pages/Calendar";
-import SignIn from "./pages/SignIn";
-import Register from "./pages/Register";
+// import SignIn from "./pages/SignIn";
+// import Register from "./pages/Register";  
 import HealthCheck from "./pages/HealthCheck";
 import DietPlan from "./pages/DietPlan";
 import CropDetection from "./pages/CropDetection";
@@ -27,8 +27,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/features" element={<Features />} />
           <Route path="/calendar" element={<Calendar />} />
-          <Route path="/signin" element={<SignIn />} />
-          <Route path="/register" element={<Register />} />
+          {/* <Route path="/signin" element={<SignIn />} />
+          <Route path="/register" element={<Register />} /> */}
           <Route path="/health-check" element={<HealthCheck />} />
           <Route path="/diet-plan" element={<DietPlan />} />
           <Route path="/crop-detection" element={<CropDetection />} />
