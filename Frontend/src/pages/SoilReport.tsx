@@ -54,11 +54,22 @@ const SoilReport = () => {
     try {
       const fileText = await uploadedFile.text();
 
-      const res = await fetch("http://localhost:8000/api/soil/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reportText: fileText }),
-      });
+if (!fileText || fileText.trim().length === 0) {
+  toast({
+    title: "Invalid File",
+    description: "The uploaded file is empty or unreadable. Please upload a valid .txt soil report.",
+    variant: "destructive",
+  });
+  setIsAnalyzing(false);
+  return;
+}
+
+const res = await fetch("http://localhost:8000/api/soil/analyze", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ reportText: fileText }),
+});
+
       const data = await res.json();
 
       setAnalysisResults(data.analysis);
@@ -124,7 +135,7 @@ const SoilReport = () => {
                 Upload Soil Report
               </CardTitle>
               <CardDescription>
-                Upload your soil test report in PDF, image, or text format
+ Upload your soil test report in TEXT (.txt) format
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -158,7 +169,7 @@ const SoilReport = () => {
               <div className="flex items-center gap-4">
                 <Input
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.txt"
+                  accept=".txt"
                   onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
                   className="flex-1"
                 />

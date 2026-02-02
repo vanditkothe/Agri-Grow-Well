@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Heart, AlertTriangle, CheckCircle, Loader2, AlertCircle, Upload, X, FileText } from "lucide-react";
+import { ArrowLeft, Heart, AlertTriangle, CheckCircle, Loader2, AlertCircle, Upload, X, FileText, Mic, MicOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -31,6 +31,108 @@ const HealthCheck = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Voice recognition states
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      setSpeechSupported(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US'; // You can change this to 'hi-IN' for Hindi or other languages
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast({
+        title: "Listening...",
+        description: "Speak your symptoms clearly",
+      });
+    };
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      // Update symptoms with final transcript
+      if (finalTranscript) {
+        setSymptoms(prev => prev + finalTranscript);
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      
+      let errorMessage = "Failed to recognize speech";
+      if (event.error === 'no-speech') {
+        errorMessage = "No speech detected. Please try again.";
+      } else if (event.error === 'not-allowed') {
+        errorMessage = "Microphone access denied. Please allow microphone access.";
+      } else if (event.error === 'network') {
+        errorMessage = "Network error. Please check your connection.";
+      }
+      
+      toast({
+        title: "Speech Recognition Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [toast]);
+
+  const toggleVoiceInput = () => {
+    if (!speechSupported) {
+      toast({
+        title: "Not Supported",
+        description: "Speech recognition is not supported in your browser. Please try Chrome or Edge.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      toast({
+        title: "Stopped listening",
+        description: "Voice input stopped",
+      });
+    } else {
+      recognitionRef.current?.start();
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,26 +313,73 @@ const HealthCheck = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="gender">Gender</Label>
-                      <Input
+                      <select
                         id="gender"
-                        placeholder="Male/Female/Other"
+                        className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
                         disabled={isAnalyzing}
-                      />
+                      >
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="symptoms">Describe your symptoms</Label>
-                    <Textarea
-                      id="symptoms"
-                      placeholder="Example: I have been feeling tired and weak for 3 days. I also have a headache and my stomach hurts after eating..."
-                      className="min-h-[120px]"
-                      value={symptoms}
-                      onChange={(e) => setSymptoms(e.target.value)}
-                      disabled={isAnalyzing}
-                    />
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="symptoms">Describe your symptoms</Label>
+                      {speechSupported && (
+                        <Button
+                          type="button"
+                          variant={isListening ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={toggleVoiceInput}
+                          disabled={isAnalyzing}
+                          className="gap-2"
+                        >
+                          {isListening ? (
+                            <>
+                              <MicOff className="h-4 w-4" />
+                              Stop
+                            </>
+                          ) : (
+                            <>
+                              <Mic className="h-4 w-4" />
+                              Voice Input
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <Textarea
+                        id="symptoms"
+                        placeholder="Example: I have been feeling tired and weak for 3 days. I also have a headache and my stomach hurts after eating..."
+                        className={`min-h-[120px] ${isListening ? 'border-red-500 ring-2 ring-red-200' : ''}`}
+                        value={symptoms}
+                        onChange={(e) => setSymptoms(e.target.value)}
+                        disabled={isAnalyzing}
+                      />
+                      {isListening && (
+                        <div className="absolute top-2 right-2">
+                          <div className="flex items-center gap-2 bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                            Listening...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {isListening && (
+                      <p className="text-xs text-muted-foreground">
+                        Speak clearly into your microphone. Your speech will be converted to text automatically.
+                      </p>
+                    )}
                   </div>
 
                   {/* Medical Report Upload */}
@@ -393,6 +542,23 @@ const HealthCheck = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Voice Input Info */}
+              {speechSupported && (
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2 text-blue-800">
+                      <Mic className="h-5 w-5" />
+                      Voice Input Available
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-blue-700">
+                      Click the microphone button to speak your symptoms instead of typing. Make sure to allow microphone access when prompted.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Emergency Warning */}
               <Card className="border-yellow-200 bg-yellow-50">

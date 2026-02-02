@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, Utensils, Leaf, Apple, Loader2, Info, CheckCircle } from "lucide-react";
+import { ArrowLeft, Utensils, Leaf, Apple, Loader2, Info, CheckCircle, Languages } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -21,13 +20,16 @@ const DietPlan = () => {
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
-  const [condition, setCondition] = useState("");
+  const [conditions, setConditions] = useState<string[]>([]);
   const [dietType, setDietType] = useState<"vegetarian" | "non-vegetarian">("vegetarian");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [dietPlan, setDietPlan] = useState<string | null>(null);
+  const [dietPlan, setDietPlan] = useState<any | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translatedPlan, setTranslatedPlan] = useState<any | null>(null);
+  const [showHindi, setShowHindi] = useState(false);
 
-  const conditions = [
+  const availableConditions = [
     "Diabetes",
     "High Blood Pressure",
     "Heart Disease",
@@ -38,6 +40,14 @@ const DietPlan = () => {
   ];
 
   const commonAllergies = ["Nuts", "Dairy", "Gluten", "Eggs", "Seafood", "Soy"];
+
+  const handleConditionChange = (condition: string, checked: boolean) => {
+    if (checked) {
+      setConditions([...conditions, condition]);
+    } else {
+      setConditions(conditions.filter((c) => c !== condition));
+    }
+  };
 
   const handleAllergyChange = (allergy: string, checked: boolean) => {
     if (checked) {
@@ -62,10 +72,10 @@ const DietPlan = () => {
   };
 
   const handleGeneratePlan = async () => {
-    if (!age || !weight || !height || !condition) {
+    if (!age || !weight || !height || conditions.length === 0) {
       toast({
         title: "Please fill all required fields",
-        description: "Complete your profile to generate a personalized diet plan",
+        description: "Complete your profile and select at least one health condition",
         variant: "destructive",
       });
       return;
@@ -73,6 +83,8 @@ const DietPlan = () => {
 
     setIsGenerating(true);
     setDietPlan(null);
+    setTranslatedPlan(null);
+    setShowHindi(false);
 
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -85,7 +97,7 @@ const DietPlan = () => {
           age,
           weight,
           height,
-          condition,
+          condition: conditions.join(", "), // Send multiple conditions
           dietType,
           allergies,
         }),
@@ -111,8 +123,48 @@ const DietPlan = () => {
     }
   };
 
+  const handleTranslateToHindi = async () => {
+    if (!dietPlan) return;
+
+    setIsTranslating(true);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+      const response = await fetch(`${API_URL}/api/diet/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          dietPlan,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to translate diet plan");
+
+      const data = await response.json();
+      setTranslatedPlan(data.translatedPlan);
+      setShowHindi(true);
+
+      toast({
+        title: "Translated to Hindi!",
+        description: "आपका आहार योजना हिंदी में तैयार है",
+      });
+    } catch (err) {
+      toast({
+        title: "Translation failed",
+        description: "Please try again later",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
   const bmi = calculateBMI();
   const bmiCategory = bmi ? getBMICategory(parseFloat(bmi)) : null;
+
+  const currentPlan = showHindi && translatedPlan ? translatedPlan : dietPlan;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -205,32 +257,41 @@ const DietPlan = () => {
                     </Alert>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="condition">Health Condition *</Label>
-                    <Select value={condition} onValueChange={setCondition} disabled={isGenerating}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your primary health focus" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {conditions.map((cond) => (
-                          <SelectItem key={cond} value={cond}>
-                            {cond}
-                          </SelectItem>
+                  {/* Health Conditions - Multiple Selection */}
+                  <div className="space-y-3">
+                    <Label>Health Conditions * (Select all that apply)</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {availableConditions.map((condition) => (
+                        <div key={condition} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={condition}
+                            checked={conditions.includes(condition)}
+                            onCheckedChange={(checked) => handleConditionChange(condition, checked as boolean)}
+                            disabled={isGenerating}
+                          />
+                          <Label htmlFor={condition} className="text-sm cursor-pointer font-medium">
+                            {condition}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                    {conditions.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {conditions.map((condition) => (
+                          <Badge key={condition} variant="default">
+                            {condition}
+                          </Badge>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Diet Type Selection */}
+                  {/* Diet Type */}
                   <div className="space-y-3">
-                    <Label>Diet Preference *</Label>
-                    <RadioGroup 
-                      value={dietType} 
-                      onValueChange={(value) => setDietType(value as "vegetarian" | "non-vegetarian")}
-                      disabled={isGenerating}
-                    >
+                    <Label>Diet Preference</Label>
+                    <RadioGroup value={dietType} onValueChange={(value: any) => setDietType(value)}>
                       <div className="grid grid-cols-2 gap-4">
-                        <div className={`relative flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                        <div className={`relative flex items-center space-x-3 rounded-lg border-2 p-4 transition-all ${
                           dietType === "vegetarian" 
                             ? "border-green-500 bg-green-50" 
                             : "border-muted hover:border-green-300"
@@ -240,12 +301,12 @@ const DietPlan = () => {
                             <Leaf className="h-5 w-5 text-green-600" />
                             <div>
                               <div className="font-semibold">Vegetarian</div>
-                              <div className="text-xs text-muted-foreground">Plant-based foods</div>
+                              <div className="text-xs text-muted-foreground">Plant-based diet</div>
                             </div>
                           </Label>
                         </div>
-                        
-                        <div className={`relative flex items-center space-x-3 p-4 border-2 rounded-lg cursor-pointer transition-all ${
+
+                        <div className={`relative flex items-center space-x-3 rounded-lg border-2 p-4 transition-all ${
                           dietType === "non-vegetarian" 
                             ? "border-orange-500 bg-orange-50" 
                             : "border-muted hover:border-orange-300"
@@ -304,25 +365,84 @@ const DietPlan = () => {
               {dietPlan && (
                 <Card className="shadow-elegant">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                      Your Personalized Diet Plan
-                    </CardTitle>
-                    <CardDescription>
-                      AI-generated nutrition plan based on your profile
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                          Your Personalized Diet Plan
+                        </CardTitle>
+                        <CardDescription>
+                          AI-generated nutrition plan based on your profile
+                        </CardDescription>
+                      </div>
+                      <Button
+                        onClick={handleTranslateToHindi}
+                        disabled={isTranslating}
+                        variant={showHindi ? "default" : "outline"}
+                        size="sm"
+                      >
+                        {isTranslating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Translating...
+                          </>
+                        ) : (
+                          <>
+                            <Languages className="h-4 w-4 mr-2" />
+                            {showHindi ? "Show English" : "हिंदी में देखें"}
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="prose prose-sm max-w-none">
-                      <div className="whitespace-pre-wrap leading-relaxed text-foreground">
-                        {dietPlan}
-                      </div>
-                    </div>
+                    <div className="space-y-4">
+
+  <p><strong>{showHindi ? "बीएमआई" : "BMI"}:</strong> {currentPlan.bmi}</p>
+  <p><strong>{showHindi ? "श्रेणी" : "Category"}:</strong> {currentPlan.bmiCategory}</p>
+  <p><strong>{showHindi ? "दैनिक कैलोरी" : "Daily Calories"}:</strong> {currentPlan.calorieTarget}</p>
+
+  <div>
+    <h3 className="font-semibold">{showHindi ? "पोषण लक्ष्य" : "Nutrition Goals"}</h3>
+    <ul className="list-disc ml-6">
+      <li>{showHindi ? "प्रोटीन" : "Protein"}: {currentPlan.nutritionGoals.protein}</li>
+      <li>{showHindi ? "कार्बोहाइड्रेट" : "Carbs"}: {currentPlan.nutritionGoals.carbs}</li>
+      <li>{showHindi ? "वसा" : "Fats"}: {currentPlan.nutritionGoals.fats}</li>
+      <li>{showHindi ? "फाइबर" : "Fiber"}: {currentPlan.nutritionGoals.fiber}</li>
+    </ul>
+  </div>
+
+  <div>
+    <h3 className="font-semibold">{showHindi ? "साप्ताहिक योजना" : "Weekly Plan"}</h3>
+    {currentPlan.weeklyPlan.map((day: any, index: number) => (
+      <div key={index} className="border rounded p-3 mt-2">
+        <p className="font-medium">{day.day}</p>
+        <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day.meals.breakfast.items.join(", ")}</p>
+        <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day.meals.lunch.items.join(", ")}</p>
+        <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day.meals.dinner.items.join(", ")}</p>
+      </div>
+    ))}
+  </div>
+
+  <div>
+    <h3 className="font-semibold">{showHindi ? "स्वास्थ्य सुझाव" : "Health Tips"}</h3>
+    <ul className="list-disc ml-6">
+      {currentPlan.healthTips.map((tip: string, i: number) => (
+        <li key={i}>{tip}</li>
+      ))}
+    </ul>
+  </div>
+
+</div>
+
                     
                     <Alert className="mt-6">
                       <Info className="h-4 w-4" />
                       <AlertDescription className="text-xs">
-                        ⚠️ This diet plan is AI-generated for educational purposes. Please consult a certified nutritionist or dietitian for professional medical advice.
+                        {showHindi 
+                          ? "⚠️ यह आहार योजना शैक्षिक उद्देश्यों के लिए AI द्वारा तैयार की गई है। पेशेवर चिकित्सा सलाह के लिए कृपया प्रमाणित पोषण विशेषज्ञ या आहार विशेषज्ञ से परामर्श करें।"
+                          : "⚠️ This diet plan is AI-generated for educational purposes. Please consult a certified nutritionist or dietitian for professional medical advice."
+                        }
                       </AlertDescription>
                     </Alert>
 
@@ -331,14 +451,16 @@ const DietPlan = () => {
                       className="w-full mt-4"
                       onClick={() => {
                         setDietPlan(null);
+                        setTranslatedPlan(null);
+                        setShowHindi(false);
                         setAge("");
                         setWeight("");
                         setHeight("");
-                        setCondition("");
+                        setConditions([]);
                         setAllergies([]);
                       }}
                     >
-                      Create New Plan
+                      {showHindi ? "नई योजना बनाएं" : "Create New Plan"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -355,7 +477,7 @@ const DietPlan = () => {
                   <div className="flex items-start gap-3">
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-muted-foreground">
-                      Personalized plans based on your health condition
+                      Personalized plans based on your health conditions
                     </p>
                   </div>
                   <div className="flex items-start gap-3">
@@ -368,6 +490,12 @@ const DietPlan = () => {
                     <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <p className="text-sm text-muted-foreground">
                       Considers allergies and dietary preferences
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      Available in English and Hindi
                     </p>
                   </div>
                 </CardContent>

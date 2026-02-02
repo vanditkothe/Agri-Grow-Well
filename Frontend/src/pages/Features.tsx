@@ -67,18 +67,18 @@ const Features = () => {
       ],
       link: "/ai-assistant"
     },
-    {
-      icon: Shield,
-      title: "Trusted & Secure",
-      description: "Your health and farming data is protected with enterprise-grade security and privacy measures.",
-      benefits: [
-        "End-to-end encryption",
-        "HIPAA-compliant storage",
-        "No data sharing with third parties",
-        "Offline mode available"
-      ],
-      link: null
-    },
+    // {
+    //   icon: Shield,
+    //   title: "Trusted & Secure",
+    //   description: "Your health and farming data is protected with enterprise-grade security and privacy measures.",
+    //   benefits: [
+    //     "End-to-end encryption",
+    //     "HIPAA-compliant storage",
+    //     "No data sharing with third parties",
+    //     "Offline mode available"
+    //   ],
+    //   link: null
+    // },
     {
       icon: Users,
       title: "Community Support",
@@ -89,7 +89,7 @@ const Features = () => {
         "Peer-to-peer support",
         "Local farming networks"
       ],
-      link: null
+      link: "/Contact"
     }
   ];
 
