@@ -64,7 +64,7 @@ if (!fileText || fileText.trim().length === 0) {
   return;
 }
 
-const res = await fetch("http://localhost:8000/api/soil/analyze", {
+const res = await fetch(import.meta.env.VITE_API_URL + "/api/soil/analyze", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ reportText: fileText }),
