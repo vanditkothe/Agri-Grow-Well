@@ -14,12 +14,9 @@ const app = express();
 app.use(cookieParser());
 
 const corsOptions = {
-  origin: [
-    "https://agri-grow-well.vercel.app",
-    "http://localhost:5173",
-    "http://localhost:3000"
-  ],
-  credentials: true,
+  origin:  "*",
+
+  optionsSuccessStatus: 200,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
