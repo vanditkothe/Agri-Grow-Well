@@ -350,7 +350,7 @@ const AiAssistant = () => {
                             strong: ({node, ...props}) => (
                               <strong className="font-semibold text-primary" {...props} />
                             ),
-                            code: ({node, inline , ...props}) => 
+                            code: ({node, inline, ...props}:any) => 
                               inline ? (
                                 <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props} />
                               ) : (
