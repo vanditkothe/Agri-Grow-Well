@@ -43,21 +43,63 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 //     throw error;
 //   }
 // }
-async function analyzeHealthWithGemini(prompt) {
+// async function analyzeHealthWithGemini(prompt) {
+//   const model = genAI.getGenerativeModel({
+//     model: "gemini-3-flash-preview",
+//   });
+
+//   let retries = 3;
+
+//   while (retries > 0) {
+//     try {
+//       const result = await model.generateContent(prompt);
+//       return result.response.text();
+//     } catch (error) {
+//       console.error("Gemini API Error:", error.message);
+
+//       if (error.status === 503) {
+//         retries--;
+//         console.log(`Retrying... attempts left: ${retries}`);
+//         await new Promise((res) => setTimeout(res, 2000));
+//       } else {
+//         throw error;
+//       }
+//     }
+//   }
+
+//   throw new Error("Gemini overloaded. Try again later.");
+// }
+async function analyzeHealthWithGemini(prompt, base64Image = null) {
   const model = genAI.getGenerativeModel({
-    model: "emini-pro",
+    model: "gemini-3-flash-preview",
   });
 
   let retries = 3;
 
+  // Prepare content: if image exists, create the multimodal array
+  let parts = [prompt];
+  if (base64Image) {
+    // Basic check to extract mimeType and clean base64 data
+    const mimeType = base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+    const cleanData = base64Image.replace(/^data:image\/\w+;base64,/, "");
+    
+    parts.push({
+      inlineData: {
+        data: cleanData,
+        mimeType: mimeType
+      }
+    });
+  }
+
   while (retries > 0) {
     try {
-      const result = await model.generateContent(prompt);
+      // Pass the 'parts' array instead of just the prompt string
+      const result = await model.generateContent(parts);
       return result.response.text();
     } catch (error) {
       console.error("Gemini API Error:", error.message);
 
-      if (error.status === 503) {
+      if (error.status === 503 || error.status === 429) {
         retries--;
         console.log(`Retrying... attempts left: ${retries}`);
         await new Promise((res) => setTimeout(res, 2000));
@@ -69,7 +111,6 @@ async function analyzeHealthWithGemini(prompt) {
 
   throw new Error("Gemini overloaded. Try again later.");
 }
-
 
 import userRouter from "./Routes/userRouter.js";
 import calendarRouter from "./Routes/calendarRouter.js";
