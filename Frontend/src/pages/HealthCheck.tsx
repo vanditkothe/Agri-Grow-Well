@@ -31,6 +31,9 @@ const HealthCheck = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [translatedAnalysis, setTranslatedAnalysis] = useState<string>("");
+const [showHindi, setShowHindi] = useState(false);
+const [isTranslating, setIsTranslating] = useState(false);
   
   // Voice recognition states
   const [isListening, setIsListening] = useState(false);
@@ -255,6 +258,41 @@ const HealthCheck = () => {
     }
   };
 
+const handleTranslate = async () => {
+  if (!analysisResult?.analysis) return;
+
+  if (showHindi) {
+    // 🔥 Switch back to English
+    setShowHindi(false);
+    return;
+  }
+
+  setIsTranslating(true);
+
+  try {
+    const API_URL = import.meta.env.VITE_API_URL;
+
+    const res = await fetch(`${API_URL}/api/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: `Translate the following health analysis into Hindi (simple farmer-friendly language). Return only translated text:\n\n${analysisResult.analysis}`,
+      }),
+    });
+
+    const data = await res.json();
+
+    setTranslatedAnalysis(data.reply);
+    setShowHindi(true);
+  } catch (err) {
+    console.error("Translation error:", err);
+  } finally {
+    setIsTranslating(false);
+  }
+};
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
       <Header />
@@ -472,6 +510,18 @@ const HealthCheck = () => {
                         <CheckCircle className="h-5 w-5 text-green-500" />
                         Your Health Analysis
                       </CardTitle>
+                      <Button
+  variant="outline"
+  size="sm"
+  onClick={handleTranslate}
+  disabled={isTranslating}
+>
+  {isTranslating
+    ? "Translating..."
+    : showHindi
+    ? "Show English"
+    : "हिंदी में देखें"}
+</Button>
                       <Badge className={getSeverityColor(analysisResult.severity)}>
                         {analysisResult.severity.toUpperCase()} SEVERITY
                       </Badge>
@@ -483,7 +533,8 @@ const HealthCheck = () => {
   className="prose prose-sm sm:prose-base max-w-none leading-relaxed text-foreground"
 >
   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-    {analysisResult.analysis.replace(/\n(?!\n)/g, '\n\n')}
+    {(showHindi ? translatedAnalysis : analysisResult.analysis)
+  .replace(/\n(?!\n)/g, '\n\n')}
   </ReactMarkdown>
 </div>
                     </div>

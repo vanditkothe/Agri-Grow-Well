@@ -19,6 +19,7 @@ const CropDetection = () => {
   const [customCropType, setCustomCropType] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
+  
 
   const cropTypes = [
     "Rice", "Wheat", "Corn", "Tomato", "Potato", "Cotton", 

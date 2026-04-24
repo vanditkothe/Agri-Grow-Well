@@ -416,23 +416,54 @@ app.post("/api/diet/plan", async (req, res) => {
 app.post("/api/diet/translate", async (req, res) => {
   try {
     const { dietPlan } = req.body;
-    if (!dietPlan) return res.status(400).json({ error: "No plan provided to translate." });
 
-    const prompt = `Translate the food items and tips in this JSON to simple Hindi (using Devanagari script). 
-    Keep all keys like "breakfast" and "lunch" in English. Return ONLY the translated JSON.
-    
-    JSON: ${JSON.stringify(dietPlan)}`;
+    if (!dietPlan) {
+      return res.status(400).json({ error: "No plan provided" });
+    }
 
-    const rawTranslation = await analyzeAI(prompt);
-    
-    const start = rawTranslation.indexOf('{');
-    const end = rawTranslation.lastIndexOf('}') + 1;
-    const translatedPlan = JSON.parse(rawTranslation.substring(start, end));
+    const prompt = `
+Translate ONLY food items and tips into Hindi (Devanagari).
+
+⚠️ Rules:
+- Keep keys like "breakfast", "lunch", "dinner" in English
+- Translate ONLY values
+- Return ONLY VALID JSON
+- No explanation
+- No extra text
+
+JSON:
+${JSON.stringify(dietPlan)}
+`;
+
+    const raw = await analyzeAI(prompt);
+
+    // 🔥 CLEAN RESPONSE
+    const cleaned = raw
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    // 🔥 SAFE JSON EXTRACTION
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}") + 1;
+
+    if (start === -1 || end === 0) {
+      throw new Error("Invalid JSON from AI");
+    }
+
+    const jsonString = cleaned.substring(start, end);
+
+    const translatedPlan = JSON.parse(jsonString);
 
     res.json({ translatedPlan });
+
   } catch (error) {
     console.error("Translation Error:", error.message);
-    res.status(500).json({ error: "Translation failed." });
+
+    res.status(500).json({
+      error: "Translation failed",
+      details: error.message,
+    });
   }
 });
 /* --------------------------- SOIL ANALYSIS ENDPOINT --------------------------- */

@@ -379,7 +379,14 @@ const DietPlan = () => {
                         </CardDescription>
                       </div>
                       <Button
-                        onClick={handleTranslateToHindi}
+                        onClick={() => {
+  if (showHindi) {
+    // 🔥 switch back to English
+    setShowHindi(false);
+  } else {
+    handleTranslateToHindi();
+  }
+}}
                         disabled={isTranslating}
                         variant={showHindi ? "default" : "outline"}
                         size="sm"
