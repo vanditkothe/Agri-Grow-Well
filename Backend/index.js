@@ -71,7 +71,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // }
 async function analyzeHealthWithGemini(prompt, base64Image = null) {
   const model = genAI.getGenerativeModel({
-    model: "gemini-3-flash-preview",
+    model: "gemini-2.5-flash",
   });
 
   let retries = 3;
@@ -102,7 +102,7 @@ async function analyzeHealthWithGemini(prompt, base64Image = null) {
       if (error.status === 503 || error.status === 429) {
         retries--;
         console.log(`Retrying... attempts left: ${retries}`);
-        await new Promise((res) => setTimeout(res, 2000));
+        await new Promise((res) => setTimeout(res, 5000));
       } else {
         throw error;
       }
