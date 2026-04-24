@@ -45,7 +45,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // }
 async function analyzeHealthWithGemini(prompt) {
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash-8b",
+    model: "emini-pro",
   });
 
   let retries = 3;
