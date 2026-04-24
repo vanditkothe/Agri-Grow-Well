@@ -27,7 +27,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ✅ Initialize Gemini AI (latest SDK)
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ✅ Helper function to handle AI calls
 // async function analyzeHealthWithGemini(prompt) {
@@ -103,46 +103,78 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
+// async function analyzeAI(prompt, base64Image = null) {
+//   // ----------- TRY GEMINI FIRST -----------
+//   try {
+//     const model = genAI.getGenerativeModel({
+//       model: "gemini-pro", // STABLE MODEL
+//     });
+
+//     let parts = [prompt];
+
+//     if (base64Image) {
+//       const mimeType =
+//         base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+//       const cleanData = base64Image.replace(
+//         /^data:image\/\w+;base64,/,
+//         ""
+//       );
+
+//       parts.push({
+//         inlineData: { data: cleanData, mimeType },
+//       });
+//     }
+
+//     const result = await model.generateContent(parts);
+//     return result.response.text();
+//   } catch (error) {
+//     console.log("⚠️ Gemini failed, switching to Groq...", error.message);
+//   }
+
+//   // ----------- FALLBACK TO GROQ -----------
+//   try {
+//     const chat = await groq.chat.completions.create({
+//       messages: [{ role: "user", content: prompt }],
+//       model: "llama3-8b-8192",
+//     });
+
+//     return chat.choices[0].message.content;
+//   } catch (error) {
+//     console.error("❌ Groq also failed:", error.message);
+//     throw new Error("All AI services failed");
+//   }
+// }
 async function analyzeAI(prompt, base64Image = null) {
-  // ----------- TRY GEMINI FIRST -----------
+  // ---------- GEMINI ----------
   try {
+    if (!process.env.GEMINI_API_KEY) throw new Error("No Gemini key");
+
     const model = genAI.getGenerativeModel({
-      model: "gemini-pro", // STABLE MODEL
+      model: "gemini-pro",
     });
 
-    let parts = [prompt];
-
-    if (base64Image) {
-      const mimeType =
-        base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
-      const cleanData = base64Image.replace(
-        /^data:image\/\w+;base64,/,
-        ""
-      );
-
-      parts.push({
-        inlineData: { data: cleanData, mimeType },
-      });
-    }
-
-    const result = await model.generateContent(parts);
+    const result = await model.generateContent(prompt);
     return result.response.text();
-  } catch (error) {
-    console.log("⚠️ Gemini failed, switching to Groq...", error.message);
+  } catch (err) {
+    console.log("Gemini failed:", err.message);
   }
 
-  // ----------- FALLBACK TO GROQ -----------
+  // ---------- GROQ ----------
   try {
+    if (!process.env.GROQ_API_KEY) throw new Error("No Groq key");
+
     const chat = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
       model: "llama3-8b-8192",
     });
 
     return chat.choices[0].message.content;
-  } catch (error) {
-    console.error("❌ Groq also failed:", error.message);
-    throw new Error("All AI services failed");
+  } catch (err) {
+    console.log("Groq failed:", err.message);
   }
+
+  // ---------- FINAL SAFE ----------
+  return "⚠️ AI temporarily unavailable. Try again.";
 }
 
 import userRouter from "./Routes/userRouter.js";
@@ -629,7 +661,7 @@ const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
   console.log(`Using AI: Gemini + Groq fallback`);
-  console.log(`Calendar API available at /api/calendar`);
+  // console.log(`Calendar API available at /api/calendar`);
 });
 
 Connection();
