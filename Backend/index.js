@@ -6,6 +6,7 @@ import Connection from "./db.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config();
@@ -26,7 +27,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ✅ Initialize Gemini AI (latest SDK)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ✅ Helper function to handle AI calls
 // async function analyzeHealthWithGemini(prompt) {
@@ -69,47 +70,79 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 //   throw new Error("Gemini overloaded. Try again later.");
 // }
-async function analyzeHealthWithGemini(prompt, base64Image = null) {
-  const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
-  });
+// async function analyzeHealthWithGemini(prompt, base64Image = null) {
+//   const model = genAI.getGenerativeModel({
+//     model: "gemini-2.5-flash", // Use 2.5-flash for higher stability on Free Tier
+//   });
 
-  let retries = 3;
+//   let parts = [prompt];
+//   if (base64Image) {
+//     const mimeType = base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+//     const cleanData = base64Image.replace(/^data:image\/\w+;base64,/, "");
+//     parts.push({ inlineData: { data: cleanData, mimeType: mimeType } });
+//   }
 
-  // Prepare content: if image exists, create the multimodal array
-  let parts = [prompt];
-  if (base64Image) {
-    // Basic check to extract mimeType and clean base64 data
-    const mimeType = base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
-    const cleanData = base64Image.replace(/^data:image\/\w+;base64,/, "");
-    
-    parts.push({
-      inlineData: {
-        data: cleanData,
-        mimeType: mimeType
-      }
+//   let retries = 3;
+//   while (retries > 0) {
+//     try {
+//       const result = await model.generateContent(parts);
+//       return result.response.text();
+//     } catch (error) {
+//       if (error.status === 503 || error.status === 429) {
+//         retries--;
+//         console.log(`Gemini busy (503/429). Retrying in 5s... Attempts left: ${retries}`);
+//         await new Promise((res) => setTimeout(res, 5000));
+//       } else {
+//         throw error;
+//       }
+//     }
+//   }
+//   throw new Error("Gemini is currently overloaded. Please try again in a minute.");
+// }
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+
+async function analyzeAI(prompt, base64Image = null) {
+  // ----------- TRY GEMINI FIRST -----------
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-pro", // STABLE MODEL
     });
-  }
 
-  while (retries > 0) {
-    try {
-      // Pass the 'parts' array instead of just the prompt string
-      const result = await model.generateContent(parts);
-      return result.response.text();
-    } catch (error) {
-      console.error("Gemini API Error:", error.message);
+    let parts = [prompt];
 
-      if (error.status === 503 || error.status === 429) {
-        retries--;
-        console.log(`Retrying... attempts left: ${retries}`);
-        await new Promise((res) => setTimeout(res, 5000));
-      } else {
-        throw error;
-      }
+    if (base64Image) {
+      const mimeType =
+        base64Image.match(/data:(.*?);base64/)?.[1] || "image/jpeg";
+      const cleanData = base64Image.replace(
+        /^data:image\/\w+;base64,/,
+        ""
+      );
+
+      parts.push({
+        inlineData: { data: cleanData, mimeType },
+      });
     }
+
+    const result = await model.generateContent(parts);
+    return result.response.text();
+  } catch (error) {
+    console.log("⚠️ Gemini failed, switching to Groq...", error.message);
   }
 
-  throw new Error("Gemini overloaded. Try again later.");
+  // ----------- FALLBACK TO GROQ -----------
+  try {
+    const chat = await groq.chat.completions.create({
+      messages: [{ role: "user", content: prompt }],
+      model: "llama3-8b-8192",
+    });
+
+    return chat.choices[0].message.content;
+  } catch (error) {
+    console.error("❌ Groq also failed:", error.message);
+    throw new Error("All AI services failed");
+  }
 }
 
 import userRouter from "./Routes/userRouter.js";
@@ -248,7 +281,7 @@ Explanation: [Brief reason for severity level]
 
 Keep language simple, avoid medical jargon, and be farmer-friendly. ${hasReport ? "Reference specific values from the test report when relevant." : ""}`;
 
-    const analysis = await analyzeHealthWithGemini(prompt, reportImage);
+    const analysis = await analyzeAI(prompt, reportImage);
 
     console.log("✅ Health analysis complete");
 
@@ -296,108 +329,80 @@ app.get("/api/health/status", (req, res) => {
 
 /* --------------------------- AI DIET PLAN ENDPOINT --------------------------- */
 
+/* --------------------------- DIET PLAN ENDPOINT --------------------------- */
 app.post("/api/diet/plan", async (req, res) => {
   try {
     const { age, weight, height, condition, dietType, allergies } = req.body;
 
+    // 1. Validation
     if (!age || !weight || !height || !condition) {
-      return res.status(400).json({
-        error: "Missing required fields: age, weight, height, and condition are required.",
-      });
+      return res.status(400).json({ error: "Missing required profile fields." });
     }
 
-    console.log("Queueing diet plan request...");
+    console.log(`Processing diet plan for: Age ${age}, Conditions: ${condition}`);
 
-    const prompt = `You are a professional nutritionist and dietitian specializing in health management for farmers and rural communities.
-
-Patient Information:
-- Age: ${age} years
-- Weight: ${weight} kg
-- Height: ${height} cm
-- Medical Conditions: ${condition}
-- Diet Preference: ${dietType || "No preference"}
-- Food Allergies: ${allergies || "None"}
-
-Create a personalized 7-day meal plan in this EXACT JSON format:
-
-{
-  "bmi": "Calculate BMI",
-  "bmiCategory": "Underweight/Normal/Overweight/Obese",
-  "calorieTarget": "Daily calorie target in kcal",
-  "nutritionGoals": {
-    "protein": "grams/day",
-    "carbs": "grams/day",
-    "fats": "grams/day",
-    "fiber": "grams/day"
-  },
-  "weeklyPlan": [
+    const prompt = `You are an expert Indian nutritionist. Create a 7-day meal plan for a farmer.
+    Details: Age ${age}, Weight ${weight}kg, Height ${height}cm, Conditions: ${condition}, Diet: ${dietType}, Allergies: ${allergies}.
+    
+    Use local Indian ingredients. Return ONLY a JSON object in this format:
     {
-      "day": "Monday",
-      "meals": {
-        "breakfast": {
-          "items": ["Item 1", "Item 2"],
-          "calories": "kcal",
-          "description": "Brief description"
-        },
-        "lunch": {
-          "items": ["Item 1", "Item 2"],
-          "calories": "kcal",
-          "description": "Brief description"
-        },
-        "dinner": {
-          "items": ["Item 1", "Item 2"],
-          "calories": "kcal",
-          "description": "Brief description"
-        },
-        "snacks": {
-          "items": ["Item 1"],
-          "calories": "kcal"
-        }
-      }
+      "bmi": "value",
+      "bmiCategory": "string",
+      "calorieTarget": "string",
+      "nutritionGoals": {"protein": "g", "carbs": "g", "fats": "g", "fiber": "g"},
+      "weeklyPlan": [{"day": "Monday", "meals": {"breakfast": {"items": []}, "lunch": {"items": []}, "dinner": {"items": []}, "snacks": {"items": []}}}],
+      "hydration": "string",
+      "tips": []
     }
-  ],
-  "hydration": "Daily water intake recommendation",
-  "tips": ["Tip 1", "Tip 2", "Tip 3"]
-}
+    IMPORTANT: No markdown, no conversational text.`;
 
-Important:
-- Use affordable, locally available Indian ingredients
-- Consider farming lifestyle and physical activity
-- Provide practical, easy-to-prepare meals
-- Return ONLY valid JSON, no markdown`;
+    const rawAIResponse = await analyzeAI(prompt);
 
-    const dietPlan = await analyzeHealthWithGemini(prompt);
-
+    // 2. Robust JSON Extraction
     let structuredPlan;
     try {
-      structuredPlan = JSON.parse(
-        dietPlan.replace(/```json|```/g, "").trim()
-      );
-    } catch (e) {
-      return res.status(500).json({
-        error: "Failed to generate structured diet plan",
-        rawPlan: dietPlan
-      });
+      const start = rawAIResponse.indexOf('{');
+      const end = rawAIResponse.lastIndexOf('}') + 1;
+      if (start === -1 || end === 0) throw new Error("No JSON found");
+      
+      const jsonString = rawAIResponse.substring(start, end);
+      structuredPlan = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error("Failed to parse AI response. Raw text:", rawAIResponse);
+      return res.status(500).json({ error: "The AI sent an invalid data format. Please try again." });
     }
 
-    res.json({
-      plan: structuredPlan,
-      timestamp: new Date().toISOString(),
-    });
+    res.json({ plan: structuredPlan, timestamp: new Date().toISOString() });
   } catch (error) {
-    console.error("Error generating diet plan:", error);
-    
-    let statusCode = 500;
-    if (error.status === 429) statusCode = 429;
-    if (error.status === 404) statusCode = 404;
-    
-    res.status(statusCode).json({
-      error: "Failed to generate diet plan",
-      details: error.message,
-    });
+    console.error("Diet Plan Route Error:", error.message);
+    res.status(500).json({ error: "Server Error: " + error.message });
   }
 });
 
+/* --------------------------- TRANSLATION ENDPOINT --------------------------- */
+// This handles the "हिंदी में देखें" button in your React frontend
+app.post("/api/diet/translate", async (req, res) => {
+  try {
+    const { dietPlan } = req.body;
+    if (!dietPlan) return res.status(400).json({ error: "No plan provided to translate." });
+
+    const prompt = `Translate the food items and tips in this JSON to simple Hindi (using Devanagari script). 
+    Keep all keys like "breakfast" and "lunch" in English. Return ONLY the translated JSON.
+    
+    JSON: ${JSON.stringify(dietPlan)}`;
+
+    const rawTranslation = await analyzeAI(prompt);
+    
+    const start = rawTranslation.indexOf('{');
+    const end = rawTranslation.lastIndexOf('}') + 1;
+    const translatedPlan = JSON.parse(rawTranslation.substring(start, end));
+
+    res.json({ translatedPlan });
+  } catch (error) {
+    console.error("Translation Error:", error.message);
+    res.status(500).json({ error: "Translation failed." });
+  }
+});
 /* --------------------------- SOIL ANALYSIS ENDPOINT --------------------------- */
 
 app.post("/api/soil/analyze", async (req, res) => {
@@ -446,7 +451,7 @@ ${reportText}
 
 Return ONLY JSON. No markdown.`;
 
-    const analysis = await analyzeHealthWithGemini(prompt);
+    const analysis = await analyzeAI(prompt);
 
     let structuredAnalysis;
     try {
@@ -496,7 +501,7 @@ Question: ${message}
 
 Provide a clear, helpful answer in simple farmer-friendly language.`;
 
-    const responseText = await analyzeHealthWithGemini(prompt);
+    const responseText = await analyzeAI(prompt);
 
     console.log("✅ Chat response generated");
 
@@ -578,7 +583,7 @@ Guidelines:
 - Do NOT include markdown or extra text`;
 
     // Gemini vision analysis (image + text)
-    const analysis = await analyzeHealthWithGemini(prompt, image);
+    const analysis = await analyzeAI(prompt, image);
 
     let structuredAnalysis;
     try {
@@ -623,7 +628,7 @@ Guidelines:
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
-  console.log(`Using Gemini model: gemini-1.5-flash-8b`);
+  console.log(`Using AI: Gemini + Groq fallback`);
   console.log(`Calendar API available at /api/calendar`);
 });
 
