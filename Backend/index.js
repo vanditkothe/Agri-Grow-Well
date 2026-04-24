@@ -150,7 +150,7 @@ async function analyzeAI(prompt, base64Image = null) {
     if (!process.env.GEMINI_API_KEY) throw new Error("No Gemini key");
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-pro",
+      model: "gemini-1.5-flash", 
     });
 
     const result = await model.generateContent(prompt);
@@ -165,7 +165,7 @@ async function analyzeAI(prompt, base64Image = null) {
 
     const chat = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
     });
 
     return chat.choices[0].message.content;
