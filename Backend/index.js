@@ -29,19 +29,45 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ✅ Helper function to handle AI calls
-async function analyzeHealthWithGemini(prompt) {
-  try {
-    // Correct model call for latest API (v1)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
+// async function analyzeHealthWithGemini(prompt) {
+//   try {
+//     // Correct model call for latest API (v1)
+//     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+//     const result = await model.generateContent(prompt);
 
-    // Properly extract AI text response
-    const text = result.response.text();
-    return text;
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    throw error;
+//     // Properly extract AI text response
+//     const text = result.response.text();
+//     return text;
+//   } catch (error) {
+//     console.error("Gemini API Error:", error);
+//     throw error;
+//   }
+// }
+async function analyzeHealthWithGemini(prompt) {
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash-latest",
+  });
+
+  let retries = 3;
+
+  while (retries > 0) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      console.error("Gemini API Error:", error.message);
+
+      if (error.status === 503) {
+        retries--;
+        console.log(`Retrying... attempts left: ${retries}`);
+        await new Promise((res) => setTimeout(res, 2000));
+      } else {
+        throw error;
+      }
+    }
   }
+
+  throw new Error("Gemini overloaded. Try again later.");
 }
 
 
