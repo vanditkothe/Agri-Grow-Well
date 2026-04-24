@@ -359,7 +359,7 @@ app.get("/api/health/status", (req, res) => {
   });
 });
 
-/* --------------------------- AI DIET PLAN ENDPOINT --------------------------- */
+
 
 /* --------------------------- DIET PLAN ENDPOINT --------------------------- */
 app.post("/api/diet/plan", async (req, res) => {

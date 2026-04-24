@@ -366,7 +366,7 @@ const DietPlan = () => {
 
               {/* AI Diet Plan Display */}
               {currentPlan?.weeklyPlan && Array.isArray(currentPlan.weeklyPlan) && (
-  <Card className="shadow-elegant">
+                 <Card className="shadow-elegant">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
@@ -422,9 +422,39 @@ const DietPlan = () => {
 {(currentPlan?.weeklyPlan || []).map((day: any, index: number) => (
   <div key={index} className="border rounded p-3 mt-2">
     <p className="font-medium">{day?.day}</p>
-    <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {day?.meals?.breakfast?.items?.join(", ") || "N/A"}</p>
-    <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {day?.meals?.lunch?.items?.join(", ") || "N/A"}</p>
-    <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {day?.meals?.dinner?.items?.join(", ") || "N/A"}</p>
+    <p>🍳 {showHindi ? "नाश्ता" : "Breakfast"}: {
+  day?.meals?.breakfast?.items?.length
+    ? day.meals.breakfast.items
+        .map((item: any) =>
+          typeof item === "string"
+            ? item
+            : item?.name || JSON.stringify(item)
+        )
+        .join(", ")
+    : "N/A"
+}</p>
+    <p>🍛 {showHindi ? "दोपहर का भोजन" : "Lunch"}: {
+  day?.meals?.lunch?.items?.length
+    ? day.meals.lunch.items
+        .map((item: any) =>
+          typeof item === "string"
+            ? item
+            : item?.name || JSON.stringify(item)
+        )
+        .join(", ")
+    : "N/A"
+}</p>
+    <p>🍽 {showHindi ? "रात का खाना" : "Dinner"}: {
+  day?.meals?.dinner?.items?.length
+    ? day.meals.dinner.items
+        .map((item: any) =>
+          typeof item === "string"
+            ? item
+            : item?.name || JSON.stringify(item)
+        )
+        .join(", ")
+    : "N/A"
+}</p>
   </div>
 ))}
 
