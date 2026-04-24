@@ -582,7 +582,7 @@ Guidelines:
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
-  console.log(`Using Gemini model: gemini-1.5-flash-latest`);
+  console.log(`Using Gemini model: gemini-1.5-flash-8b`);
   console.log(`Calendar API available at /api/calendar`);
 });
 
