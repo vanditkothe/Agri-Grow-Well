@@ -10,6 +10,10 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Upload, FileText, Image, BarChart3, Droplets, Sprout, Calendar, ArrowLeft, AlertCircle, CheckCircle2, TrendingUp, TrendingDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import workerSrc from "pdfjs-dist/build/pdf.worker.min?url";
+
+GlobalWorkerOptions.workerSrc = workerSrc;
 
 const SoilReport = () => {
   const navigate = useNavigate();
@@ -39,55 +43,154 @@ const SoilReport = () => {
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) handleFileUpload(files[0]);
   };
+  const extractTextFromPDF = async (file: File) => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await getDocument({ data: arrayBuffer }).promise;
 
-  const handleAnalyze = async () => {
-    if (!uploadedFile) {
+    let text = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+
+      const strings = content.items.map((item: any) => item.str);
+      text += strings.join(" ") + "\n";
+    }
+
+    return text;
+  };
+
+
+//   const handleAnalyze = async () => {
+//     if (!uploadedFile) {
+//       toast({
+//         title: "No File Selected",
+//         description: "Please upload a soil report first.",
+//         variant: "destructive",
+//       });
+//       return;
+//     }
+
+//     setIsAnalyzing(true);
+//     try {
+//       const fileText = await uploadedFile.text();
+
+// if (!fileText || fileText.trim().length === 0) {
+//   toast({
+//     title: "Invalid File",
+//     description: "The uploaded file is empty or unreadable. Please upload a valid .txt soil report.",
+//     variant: "destructive",
+//   });
+//   setIsAnalyzing(false);
+//   return;
+// }
+
+// const res = await fetch(import.meta.env.VITE_API_URL + "/api/soil/analyze", {
+//   method: "POST",
+//   headers: { "Content-Type": "application/json" },
+//   body: JSON.stringify({ reportText: fileText }),
+// });
+
+//       const data = await res.json();
+
+//       setAnalysisResults(data.analysis);
+//       toast({
+//         title: "Analysis Complete",
+//         description: "AI has analyzed your soil report successfully.",
+//       });
+//     } catch (err) {
+//       console.error(err);
+//       toast({
+//         title: "Analysis Failed",
+//         description: "AI could not analyze your report. Please try again.",
+//         variant: "destructive",
+//       });
+//     } finally {
+//       setIsAnalyzing(false);
+//     }
+//   };
+
+const handleAnalyze = async () => {
+  if (!uploadedFile) {
+    toast({
+      title: "No File Selected",
+      description: "Please upload a soil report first.",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  setIsAnalyzing(true);
+
+  try {
+    let fileText = "";
+
+    // ✅ Handle TXT
+    if (uploadedFile.type === "text/plain") {
+      fileText = await uploadedFile.text();
+    }
+
+    // ✅ Handle PDF
+    else if (uploadedFile.type === "application/pdf") {
+      fileText = await extractTextFromPDF(uploadedFile);
+    }
+
+    else {
       toast({
-        title: "No File Selected",
-        description: "Please upload a soil report first.",
+        title: "Unsupported File",
+        description: "Only PDF or TXT files are allowed.",
         variant: "destructive",
       });
+      setIsAnalyzing(false);
       return;
     }
 
-    setIsAnalyzing(true);
-    try {
-      const fileText = await uploadedFile.text();
-
-if (!fileText || fileText.trim().length === 0) {
-  toast({
-    title: "Invalid File",
-    description: "The uploaded file is empty or unreadable. Please upload a valid .txt soil report.",
-    variant: "destructive",
-  });
-  setIsAnalyzing(false);
-  return;
-}
-
-const res = await fetch(import.meta.env.VITE_API_URL + "/api/soil/analyze", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ reportText: fileText }),
-});
-
-      const data = await res.json();
-
-      setAnalysisResults(data.analysis);
+    // ✅ Check empty
+    if (!fileText || fileText.trim().length === 0) {
       toast({
-        title: "Analysis Complete",
-        description: "AI has analyzed your soil report successfully.",
-      });
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: "Analysis Failed",
-        description: "AI could not analyze your report. Please try again.",
+        title: "Invalid File",
+        description: "Could not read content from file.",
         variant: "destructive",
       });
-    } finally {
       setIsAnalyzing(false);
+      return;
     }
-  };
+
+    // ✅ LIMIT FIX (avoid token overload)
+    if (fileText.length > 5000) {
+      fileText = fileText.slice(0, 5000);
+    }
+
+    const res = await fetch(
+      import.meta.env.VITE_API_URL + "/api/soil/analyze",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reportText: fileText }),
+      }
+    );
+
+    const data = await res.json();
+
+    setAnalysisResults(data.analysis);
+
+    toast({
+      title: "Analysis Complete",
+      description: "AI has analyzed your soil report successfully.",
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    toast({
+      title: "Analysis Failed",
+      description: "Could not analyze file.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   const getParameterStatus = (value: string, optimalRange: string) => {
     if (!optimalRange) return null;
@@ -169,7 +272,7 @@ const res = await fetch(import.meta.env.VITE_API_URL + "/api/soil/analyze", {
               <div className="flex items-center gap-4">
                 <Input
                   type="file"
-                  accept=".txt"
+                  accept=".txt,.pdf"
                   onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
                   className="flex-1"
                 />
