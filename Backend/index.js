@@ -688,6 +688,41 @@ Guidelines:
 });
 
 /* ------------------------------------------------------------- */
+import nodemailer from "nodemailer";
+
+app.post("/api/contact", async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: "vanditkothe@gmail.com", // 👈 YOUR EMAIL
+      subject: "New Contact Message",
+      html: `
+        <h3>New Message</h3>
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Message:</b> ${message}</p>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Email failed" });
+  }
+});
+/* ------------------------------------------------------------- */
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {
   console.log(`Server is listening on ${PORT}`);
