@@ -596,55 +596,46 @@ app.post("/api/crop/analyze", async (req, res) => {
 
     console.log("Queueing crop analysis request...");
 
-    const prompt = `You are an expert agricultural scientist specializing in crop disease detection for Indian farmers.
+    const prompt = `
+You are a STRICT agricultural plant disease expert.
 
-Crop Information:
-- Crop Name: ${cropType}
+STEP 1:
+Describe EXACTLY what you see in the image (colors, damage, fungus, insects, rot).
 
-Analyze the crop image and return the result in this EXACT JSON format:
+STEP 2:
+Based on that, determine if the plant is Healthy or Diseased.
+
+STRICT RULES:
+- If ANY damage, rot, fungus, insects → mark as Diseased
+- NEVER say Healthy unless PERFECT
+- If unsure → choose Diseased
+
+STEP 3:
+Return ONLY JSON:
 
 {
   "healthStatus": {
     "status": "Healthy / Diseased / Stressed",
     "confidence": "High / Medium / Low",
-    "summary": "Short explanation of crop condition"
+    "summary": "Clear explanation"
   },
   "identifiedIssues": [
     {
-      "name": "Disease or Pest Name",
-      "type": "Disease / Pest / Nutrient Deficiency",
+      "name": "Exact issue (rot, fungus, pest)",
+      "type": "Disease / Pest / Environmental",
       "severity": "Low / Medium / High",
-      "description": "Simple explanation in farmer-friendly language",
-      "symptoms": ["Symptom 1", "Symptom 2"]
+      "description": "What is happening",
+      "symptoms": ["visible symptoms"]
     }
   ],
   "treatmentRecommendations": {
-    "immediate": [
-      "Immediate action to prevent damage"
-    ],
-    "organic": [
-      "Organic treatment method"
-    ],
-    "chemical": [
-      "Recommended chemical treatment (if needed)"
-    ],
-    "preventive": [
-      "Steps to prevent future occurrence"
-    ]
-  },
-  "additionalTips": [
-    "General care tip",
-    "Watering / soil / spacing advice"
-  ]
+    "immediate": ["what to do now"],
+    "organic": ["organic solutions"],
+    "chemical": ["if needed"],
+    "preventive": ["future prevention"]
+  }
 }
-
-Guidelines:
-- Focus on Indian farming practices
-- Use simple, non-technical language
-- Be farmer-friendly
-- Return ONLY valid JSON
-- Do NOT include markdown or extra text`;
-
+`;
     // Gemini vision analysis (image + text)
     const analysis = await analyzeAI(prompt, image);
 
@@ -693,11 +684,8 @@ import nodemailer from "nodemailer";
 app.post("/api/contact", async (req, res) => {
   try {
     console.log("🔥 CONTACT HIT");
-
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.log("❌ ENV MISSING");
-      return res.status(500).json({ error: "Email config missing" });
-    }
+    console.log("EMAIL_USER:", process.env.EMAIL_USER);
+    console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "EXISTS" : "MISSING");
 
     const { name, email, message } = req.body;
 
@@ -714,16 +702,14 @@ app.post("/api/contact", async (req, res) => {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: "vanditkothe@gmail.com",
-      subject: "New Contact Message",
-      text: `Name: ${name}\nEmail: ${email}\nMessage: ${message}`,
+      subject: "Test Mail",
+      text: `Name: ${name} Email: ${email} Message: ${message}`,
     });
-
-    console.log("✅ EMAIL SENT");
 
     res.json({ success: true });
 
   } catch (err) {
-    console.error("❌ ERROR:", err.message);
+    console.error("❌ FULL ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 });
