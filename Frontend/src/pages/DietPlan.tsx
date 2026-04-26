@@ -175,7 +175,7 @@ const DietPlan = () => {
       <main className="container mx-auto px-4 pt-8 pb-12">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
+          <div className="flex items-center py-10 gap-4 mb-4">
             <Button
               variant="ghost"
               size="sm"

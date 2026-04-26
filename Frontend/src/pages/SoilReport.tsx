@@ -208,7 +208,7 @@ const handleAnalyze = async () => {
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
+          <div className="flex items-center py-10 gap-4 mb-4">
             <Button 
               variant="ghost" 
               size="sm" 
